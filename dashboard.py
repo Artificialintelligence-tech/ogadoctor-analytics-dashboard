@@ -1,24 +1,42 @@
 import streamlit as st
+import time
 
-st.set_page_config(layout="wide")
-st.title("🔔 OgaDoctor - Pharmacy Dashboard")
-st.markdown("**Brother's Pharmacy - Live Patients**")
+st.set_page_config(page_title="OgaDoctor Dashboard", layout="wide")
 
-if st.button("💉 TEST FEVER PATIENT", use_container_width=True):
-    with st.container(border=True):
-        st.error("""
-        🔔 Aisha Musa, 28 • 15min away
-        🔥 Fever 3 days + chills + headache
-        🦠 Malaria-like symptoms
-        💊 Likely: Coartem/Lone Star
-        📍 [MAP LINK]
-        """)
-        col1, col2 = st.columns(2)
+st.title("🔔 OgaDoctor - New Patients")
+st.markdown("---")
+
+if 'patients' not in st.session_state:
+    st.session_state.patients = []
+
+# Test patient button
+if st.button("💉 ADD TEST PATIENT", type="primary"):
+    new_patient = {
+        "name": "Aisha Ibrahim",
+        "age": 28,
+        "distance": "15min walk",
+        "symptoms": "Fever 3 days, chills, headache",
+        "possible": "Malaria-like symptoms",
+        "drugs": "Coartem/Lone Star",
+        "status": "New"
+    }
+    st.session_state.patients.append(new_patient)
+    st.rerun()
+
+# Patient queue
+for i, patient in enumerate(st.session_state.patients):
+    with st.container():
+        col1, col2, col3 = st.columns([3, 1, 1])
         with col1:
-            if st.button("✅ STOCK OK"): 
-                st.success("✅ Aisha notified: 'Pharmacy ready!'")
+            st.error(f"🔔 {patient['name']}, {patient['age']}")
+            st.write(f"**Distance:** {patient['distance']}")
+            st.write(f"**Symptoms:** {patient['symptoms']}")
+            st.write(f"**Possible:** {patient['possible']}")
         with col2:
-            if st.button("❌ NO STOCK"):
-                st.error("❌ Aisha re-routed")
-
-st.info("💡 Demo ready! Show brother tomorrow")
+            if st.button("✅ STOCK OK", key=f"ok_{i}"):
+                patient['status'] = "Confirmed"
+                st.success("Patient notified!")
+        with col3:
+            if st.button("❌ NO STOCK", key=f"no_{i}"):
+                patient['status'] = "No stock"
+                st.error("Patient re-routed")
