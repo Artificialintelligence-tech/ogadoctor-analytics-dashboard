@@ -2,7 +2,7 @@
 
 Real-time pharmacy analytics dashboard built with Streamlit for monitoring consultations, inventory, and business metrics.
 
-**Live Demo**: [View on Streamlit Cloud](YOUR_STREAMLIT_LINK)
+**Live Demo**: [View on Streamlit Cloud](https://ogadoctor-dhg57oywhp7wqpvwyycwg7.streamlit.app/)
 
 ## 📊 Features
 
