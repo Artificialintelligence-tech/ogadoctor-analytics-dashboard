@@ -75,8 +75,8 @@ def init_supabase():
     key = "YOUR-ANON-KEY"
     """
     try:
-        url = st.secrets["supabase_url"]
-        key = st.secrets["supabase_key"]
+        url = st.secrets["supabase"]["url"]
+        key = st.secrets["supabase"]["key"]
         return create_client(url, key)
     except Exception as e:
         st.error(f"Failed to connect to Supabase: {str(e)}")
@@ -861,4 +861,5 @@ directly from WhatsApp conversations to the Supabase database.
 That will complete the full flow:
 WhatsApp → Botpress → ChatGPT → Supabase → Dashboard
 """
+
 
