@@ -97,7 +97,7 @@ def get_consultations():
     try:
         response = supabase.table('consultations')\
             .select('*')\
-            .neq('status', 'completed')\
+            #.neq('status', 'completed')\
             .order('created_at', desc=True)\
             .execute()
         return response.data if response.data else []
@@ -861,5 +861,6 @@ directly from WhatsApp conversations to the Supabase database.
 That will complete the full flow:
 WhatsApp → Botpress → ChatGPT → Supabase → Dashboard
 """
+
 
 
