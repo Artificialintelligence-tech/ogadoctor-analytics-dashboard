@@ -95,11 +95,11 @@ def get_consultations():
     Returns consultations that are not completed
     """
     try:
-        response = supabase.table('consultations')\
-            .select('*')\
+        response = (supabase.table('Consultations')
+            .select('*')
             #.neq('status', 'completed')\
-            .order('created_at', desc=True)\
-            .execute()
+            .order('created_at', desc=True)
+            .execute())
         return response.data if response.data else []
     except Exception as e:
         st.error(f"Error fetching consultations: {str(e)}")
@@ -111,10 +111,10 @@ def get_all_consultations():
     Used for analytics
     """
     try:
-        response = supabase.table('consultations')\
-            .select('*')\
-            .order('created_at', desc=True)\
-            .execute()
+        response = (supabase.table('Consultations')
+            .select('*')
+            .order('created_at', desc=True)
+            .execute())
         return response.data if response.data else []
     except Exception as e:
         st.error(f"Error fetching all consultations: {str(e)}")
@@ -123,9 +123,9 @@ def get_all_consultations():
 def get_inventory():
     """Fetch all medications from database"""
     try:
-        response = supabase.table('medications')\
-            .select('*')\
-            .execute()
+        response = (supabase.table('medications')
+            .select('*')
+            .execute())
         return response.data if response.data else []
     except Exception as e:
         st.error(f"Error fetching inventory: {str(e)}")
@@ -140,10 +140,10 @@ def update_consultation_status(consultation_id, updates):
         updates: Dictionary of fields to update
     """
     try:
-        response = supabase.table('consultations')\
-            .update(updates)\
-            .eq('id', consultation_id)\
-            .execute()
+        response = (supabase.table('Consultations')
+            .update(updates)
+            .eq('id', consultation_id)
+            .execute())
         return response.data
     except Exception as e:
         st.error(f"Error updating consultation: {str(e)}")
