@@ -86,11 +86,15 @@ else:
     pharmacy_id = st.session_state.pharmacy_id
     
     # Get fresh pharmacy data
-    pharmacy_data = supabase.table('pharmacies')\
-        .select('*')\
-        .eq('id', pharmacy_id)\
-        .single()\
-        .execute().data
+    try:
+        pharmacy_data = supabase.table('pharmacies')\
+            .select('*')\
+            .eq('id', pharmacy_id)\
+            .single()\
+            .execute().data
+    except Exception as e:
+        st.error(f"Error loading pharmacy data: {str(e)}")
+        st.stop()
     
     # ========================================================================
     # SIDEBAR
@@ -147,11 +151,14 @@ else:
         
         today = datetime.now().date()
         
-        today_orders = supabase.table('orders')\
-            .select('*')\
-            .eq('pharmacy_id', pharmacy_id)\
-            .gte('created_at', today.isoformat())\
-            .execute().data
+        try:
+            today_orders = supabase.table('orders')\
+                .select('*')\
+                .eq('pharmacy_id', pharmacy_id)\
+                .gte('created_at', today.isoformat())\
+                .execute().data or []
+        except:
+            today_orders = []
         
         col1, col2, col3 = st.columns(3)
         
@@ -169,14 +176,19 @@ else:
         st.markdown("---")
         
         # Pending orders alert
-        pending_orders = supabase.table('orders')\
-            .select('*')\
-            .eq('pharmacy_id', pharmacy_id)\
-            .eq('status', 'pending')\
-            .execute().data
+        try:
+            pending_orders = supabase.table('orders')\
+                .select('*')\
+                .eq('pharmacy_id', pharmacy_id)\
+                .eq('status', 'pending')\
+                .execute().data or []
+        except:
+            pending_orders = []
         
         if pending_orders:
             st.warning(f"⚠️ You have **{len(pending_orders)}** pending order(s)!")
+        else:
+            st.info("✅ No pending orders at the moment")
     
     # ========================================================================
     # PAGE 2: PENDING ORDERS
@@ -184,12 +196,16 @@ else:
     elif page == "📦 Pending Orders":
         st.title("📦 Pending Medication Orders")
         
-        pending_orders = supabase.table('orders')\
-            .select('*')\
-            .eq('pharmacy_id', pharmacy_id)\
-            .in_('status', ['pending', 'accepted', 'preparing'])\
-            .order('created_at', desc=False)\
-            .execute().data
+        try:
+            pending_orders = supabase.table('orders')\
+                .select('*')\
+                .eq('pharmacy_id', pharmacy_id)\
+                .in_('status', ['pending', 'accepted', 'preparing'])\
+                .order('created_at', desc=False)\
+                .execute().data or []
+        except Exception as e:
+            st.error(f"Error loading orders: {str(e)}")
+            pending_orders = []
         
         if not pending_orders:
             st.success("✅ No pending orders!")
@@ -224,52 +240,67 @@ else:
                 with col1:
                     if order.get('status') == 'pending':
                         if st.button("✅ Accept", key=f"accept_{order['id']}"):
-                            supabase.table('orders').update({
-                                'status': 'accepted',
-                                'accepted_at': datetime.now().isoformat()
-                            }).eq('id', order['id']).execute()
-                            st.success("Order accepted!")
-                            st.rerun()
+                            try:
+                                supabase.table('orders').update({
+                                    'status': 'accepted',
+                                    'accepted_at': datetime.now().isoformat()
+                                }).eq('id', order['id']).execute()
+                                st.success("Order accepted!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error: {str(e)}")
                 
                 with col2:
                     if order.get('status') == 'accepted':
                         if st.button("📦 Preparing", key=f"prep_{order['id']}"):
-                            supabase.table('orders').update({
-                                'status': 'preparing'
-                            }).eq('id', order['id']).execute()
-                            st.info("Marked as preparing")
-                            st.rerun()
+                            try:
+                                supabase.table('orders').update({
+                                    'status': 'preparing'
+                                }).eq('id', order['id']).execute()
+                                st.info("Marked as preparing")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error: {str(e)}")
                 
                 with col3:
                     if order.get('status') in ['accepted', 'preparing']:
                         if st.button("🚚 Dispatched", key=f"dispatch_{order['id']}"):
-                            supabase.table('orders').update({
-                                'status': 'out_for_delivery',
-                                'dispatched_at': datetime.now().isoformat()
-                            }).eq('id', order['id']).execute()
-                            st.info("Order dispatched!")
-                            st.rerun()
+                            try:
+                                supabase.table('orders').update({
+                                    'status': 'out_for_delivery',
+                                    'dispatched_at': datetime.now().isoformat()
+                                }).eq('id', order['id']).execute()
+                                st.info("Order dispatched!")
+                                st.rerun()
+                            except Exception as e:
+                                st.error(f"Error: {str(e)}")
                 
                 # Delivery confirmation
                 if order.get('status') == 'out_for_delivery':
                     if st.button("✅ Delivered", key=f"delivered_{order['id']}", type="primary"):
-                        supabase.table('orders').update({
-                            'status': 'delivered',
-                            'delivered_at': datetime.now().isoformat(),
-                            'pharmacy_payout_status': 'pending'
-                        }).eq('id', order['id']).execute()
-                        st.success("Order completed!")
-                        st.rerun()
+                        try:
+                            supabase.table('orders').update({
+                                'status': 'delivered',
+                                'delivered_at': datetime.now().isoformat(),
+                                'pharmacy_payout_status': 'pending'
+                            }).eq('id', order['id']).execute()
+                            st.success("Order completed!")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
                 
                 # Reject option
                 if order.get('status') == 'pending':
                     if st.button("❌ Reject (Out of Stock)", key=f"reject_{order['id']}"):
-                        supabase.table('orders').update({
-                            'status': 'cancelled',
-                            'cancellation_reason': 'out_of_stock'
-                        }).eq('id', order['id']).execute()
-                        st.error("Order rejected")
-                        st.rerun()
+                        try:
+                            supabase.table('orders').update({
+                                'status': 'cancelled',
+                                'cancellation_reason': 'out_of_stock'
+                            }).eq('id', order['id']).execute()
+                            st.error("Order rejected")
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"Error: {str(e)}")
                 
                 st.markdown("---")
     
@@ -298,7 +329,11 @@ else:
             month_ago = (datetime.now() - timedelta(days=30)).date()
             query = query.gte('delivered_at', month_ago.isoformat())
         
-        completed_orders = query.execute().data
+        try:
+            completed_orders = query.execute().data or []
+        except Exception as e:
+            st.error(f"Error loading orders: {str(e)}")
+            completed_orders = []
         
         st.write(f"**{len(completed_orders)} completed order(s)**")
         
@@ -320,6 +355,8 @@ else:
             if not display_df.empty:
                 display_df.columns = ['Delivered', 'Patient', 'Order Total', 'Your Share']
                 st.dataframe(display_df, use_container_width=True, hide_index=True)
+        else:
+            st.info("No completed orders for this time period")
     
     # ========================================================================
     # PAGE 4: INVENTORY
@@ -340,27 +377,36 @@ else:
             st.metric("Total Revenue", f"₦{pharmacy_data.get('total_revenue', 0):,.0f}")
         
         with col2:
-            pending_orders = supabase.table('orders')\
-                .select('pharmacy_payout_amount')\
-                .eq('pharmacy_id', pharmacy_id)\
-                .eq('status', 'delivered')\
-                .eq('pharmacy_payout_status', 'pending')\
-                .execute().data
+            try:
+                pending_orders = supabase.table('orders')\
+                    .select('pharmacy_payout_amount')\
+                    .eq('pharmacy_id', pharmacy_id)\
+                    .eq('status', 'delivered')\
+                    .eq('pharmacy_payout_status', 'pending')\
+                    .execute().data or []
+            except:
+                pending_orders = []
             
             pending = sum(o.get('pharmacy_payout_amount', 0) for o in pending_orders)
             st.metric("Pending Payout", f"₦{pending:,.0f}")
         
         with col3:
             month_ago = (datetime.now() - timedelta(days=30)).date()
-            month_orders = supabase.table('orders')\
-                .select('pharmacy_payout_amount')\
-                .eq('pharmacy_id', pharmacy_id)\
-                .eq('status', 'delivered')\
-                .gte('delivered_at', month_ago.isoformat())\
-                .execute().data
+            try:
+                month_orders = supabase.table('orders')\
+                    .select('pharmacy_payout_amount')\
+                    .eq('pharmacy_id', pharmacy_id)\
+                    .eq('status', 'delivered')\
+                    .gte('delivered_at', month_ago.isoformat())\
+                    .execute().data or []
+            except:
+                month_orders = []
             
             month_revenue = sum(o.get('pharmacy_payout_amount', 0) for o in month_orders)
             st.metric("This Month", f"₦{month_revenue:,.0f}")
+        
+        st.markdown("---")
+        st.info("Detailed earnings charts will appear once you have completed orders")
     
     # ========================================================================
     # PAGE 6: SETTINGS
@@ -402,12 +448,15 @@ else:
             )
             
             if st.form_submit_button("💾 Update"):
-                supabase.table('pharmacies').update({
-                    'delivery_available': delivery_available,
-                    'delivery_fee': delivery_fee
-                }).eq('id', pharmacy_id).execute()
-                st.success("Settings updated!")
-                st.rerun()
+                try:
+                    supabase.table('pharmacies').update({
+                        'delivery_available': delivery_available,
+                        'delivery_fee': delivery_fee
+                    }).eq('id', pharmacy_id).execute()
+                    st.success("Settings updated!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error updating settings: {str(e)}")
         
         st.markdown("---")
         st.subheader("💳 Bank Details")
@@ -434,15 +483,18 @@ else:
                 ])
             
             if st.form_submit_button("💾 Update"):
-                supabase.table('pharmacies').update({
-                    'bank_details': {
-                        'account_name': account_name,
-                        'account_number': account_number,
-                        'bank_name': bank_name
-                    }
-                }).eq('id', pharmacy_id).execute()
-                st.success("Bank details updated!")
-                st.rerun()
+                try:
+                    supabase.table('pharmacies').update({
+                        'bank_details': {
+                            'account_name': account_name,
+                            'account_number': account_number,
+                            'bank_name': bank_name
+                        }
+                    }).eq('id', pharmacy_id).execute()
+                    st.success("Bank details updated!")
+                    st.rerun()
+                except Exception as e:
+                    st.error(f"Error updating bank details: {str(e)}")
 
 # Footer
 st.markdown("---")
