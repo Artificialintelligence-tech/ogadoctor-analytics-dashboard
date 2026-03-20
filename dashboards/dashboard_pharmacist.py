@@ -298,7 +298,7 @@ else:
                 
                 st.markdown(f"""
                 <div style='background-color: {bg_color}; padding: 15px; border-radius: 10px; margin: 10px 0;'>
-                    <h4>{session.get('priority', 'MODERATE')} - Patient #{session['id'][:8]}</h4>
+                    <h4>{session.get('priority', 'MODERATE')} - Patient #{str(session['id'])[:8]}</h4>
                     <p><strong>Question:</strong> {session['symptoms'][:100]}...</p>
                     <p><strong>Status:</strong> {session['status']}</p>
                 </div>
