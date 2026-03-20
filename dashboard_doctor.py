@@ -274,8 +274,8 @@ else:
                 
                 with col2:
                     st.write(f"**Status:** {consult.get('status', 'N/A')}")
-                    st.write(f"**Fee:** ₦{consult.get('consultation_fee', 1500):,.0f}")
-                    st.write(f"**Your Payout:** ₦{consult.get('doctor_payout', 705):,.0f}")
+                    st.write(f"**Fee:** ₦{consult.get('consultation_fee', 1000):,.0f}")
+                    st.write(f"**Your Payout:** ₦{consult.get('provider_payout', 705):,.0f}")
                     
                     if consult.get('patient_rating'):
                         st.write(f"**Rating:** {'⭐' * consult['patient_rating']}")
@@ -388,7 +388,8 @@ else:
                 .order('created_at', desc=True)\
                 .execute().data
         except Exception as e:
-            st.error(f"Error loading reviews: {str(e)}")
+            # Doctor_id column might not exist yet in reviews table
+            st.info("Reviews feature coming soon! The database column is being added.")
             reviews = []
         
         if not reviews:
@@ -427,13 +428,13 @@ else:
         with col2:
             try:
                 pending = supabase.table('Consultations')\
-                    .select('doctor_payout')\
+                    .select('provider_payout')\
                     .eq('doctor_id', doctor_id)\
                     .eq('status', 'completed')\
-                    .eq('payout_status', 'pending')\
+                    .eq('payment_status', 'pending')\
                     .execute().data
                 
-                pending_amount = sum(p.get('doctor_payout', 705) for p in pending)
+                pending_amount = sum(p.get('provider_payout', 705) for p in pending)
             except Exception as e:
                 st.error(f"Error loading pending payouts: {str(e)}")
                 pending_amount = 0
@@ -461,15 +462,15 @@ else:
         if consultations:
             df = pd.DataFrame(consultations)
             
-            if 'completed_at' in df.columns and 'doctor_payout' in df.columns:
+            if 'completed_at' in df.columns and 'provider_payout' in df.columns:
                 df['completed_at'] = pd.to_datetime(df['completed_at'])
                 df['date'] = df['completed_at'].dt.date
                 
-                daily_earnings = df.groupby('date')['doctor_payout'].sum().reset_index()
+                daily_earnings = df.groupby('date')['provider_payout'].sum().reset_index()
                 st.line_chart(daily_earnings.set_index('date'))
                 
                 st.dataframe(
-                    df[['completed_at', 'patient_name', 'doctor_payout']],
+                    df[['completed_at', 'patient_name', 'provider_payout']],
                     use_container_width=True
                 )
         else:
