@@ -1291,7 +1291,7 @@ elif page == "💰 Payments":
                       if c.get('provider_type') == 'doctor' and c.get('status') == 'confirmed')
     pharmacists_owed = sum(c.get('consultation_fee', 0) * 0.40 for c in consultations 
                           if c.get('provider_type') == 'pharmacist' and c.get('status') == 'confirmed')
-    pharmacies_owed = sum(o.get('pharmacy_payout_amount', 0) for o in orders 
+    pharmacies_owed = sum(o.get('provider_payout', 0) for o in orders 
                          if o.get('pharmacy_payout_status') == 'pending')
     
     total_payouts_pending = doctors_owed + pharmacists_owed + pharmacies_owed
