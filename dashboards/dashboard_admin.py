@@ -1473,7 +1473,7 @@ elif page == "📈 Analytics":
         st.subheader("Session Trends")
         
         if 'created_at' in df.columns:
-            df['date'] = pd.to_datetime(df['created_at']).dt.date
+            df['date'] = pd.to_datetime(df['created_at'], errors='coerce').dt.date
             daily_counts = df.groupby('date').size().reset_index(name='count')
             
             fig = px.line(daily_counts, x='date', y='count',
