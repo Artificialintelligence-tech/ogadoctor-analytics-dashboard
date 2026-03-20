@@ -262,7 +262,7 @@ else:
         st.write(f"**{len(consultations)} consultation(s)**")
         
         for consult in consultations:
-            with st.expander(f"Patient #{consult['id'][:8]} - {consult.get('symptoms', 'N/A')[:50]}..."):
+            with st.expander(f"Patient #{str(consult['id'])[:8]} - {consult.get('symptoms', 'N/A')[:50]}..."):
                 
                 col1, col2 = st.columns(2)
                 
