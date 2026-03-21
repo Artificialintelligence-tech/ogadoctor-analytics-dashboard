@@ -254,6 +254,151 @@ def botpress_webhook():
             'error': str(e)
         }), 500
 
+@app.route('/payment/create-link', methods=['POST'])
+def create_payment_link():
+    """
+    Generate Paystack payment link for consultation
+    """
+    try:
+        data = request.json
+        consultation_id = data.get('consultation_id')
+        consultation_type = data.get('consultation_type', 'doctor')
+        patient_email = data.get('patient_email', 'patient@ogadoctor.com')
+        
+        # Get consultation details
+        consultation = supabase.table('Consultations')\
+            .select('*')\
+            .eq('id', consultation_id)\
+            .single()\
+            .execute().data
+        
+        if not consultation:
+            return jsonify({'error': 'Consultation not found'}), 404
+        
+        # Determine amount (in kobo - Paystack uses kobo)
+        if consultation_type == 'pharmacist':
+            amount = 1000 * 100  # ₦1,000 in kobo
+        else:
+            amount = 1500 * 100  # ₦1,500 in kobo
+        
+        # Create Paystack payment link
+        paystack_url = 'https://api.paystack.co/transaction/initialize'
+        
+        headers = {
+            'Authorization': f'Bearer {os.getenv("PAYSTACK_SECRET_KEY")}',
+            'Content-Type': 'application/json'
+        }
+        
+        payload = {
+            'email': patient_email,
+            'amount': amount,
+            'metadata': {
+                'consultation_id': consultation_id,
+                'consultation_type': consultation_type,
+                'patient_name': consultation['patient_name'],
+                'patient_phone': consultation['patient_phone']
+            },
+            'callback_url': 'https://ogadoctor-analytics-dashboard.onrender.com/payment/callback'
+        }
+        
+        response = requests.post(paystack_url, json=payload, headers=headers)
+        result = response.json()
+        
+        if result['status']:
+            payment_url = result['data']['authorization_url']
+            reference = result['data']['reference']
+            
+            # Update consultation with payment reference
+            supabase.table('Consultations').update({
+                'payment_reference': reference,
+                'payment_url': payment_url
+            }).eq('id', consultation_id).execute()
+            
+            return jsonify({
+                'success': True,
+                'payment_url': payment_url,
+                'reference': reference,
+                'amount': amount / 100  # Convert back to naira
+            }), 200
+        else:
+            return jsonify({'error': result.get('message', 'Payment link creation failed')}), 400
+    
+    except Exception as e:
+        print(f"❌ Error creating payment link: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
+
+@app.route('/payment/callback', methods=['GET'])
+def payment_callback():
+    """
+    Handle Paystack payment callback (redirect after payment)
+    """
+    reference = request.args.get('reference')
+    
+    if reference:
+        return f"""
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Payment Successful - OgaDoctor</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
+                    margin: 0;
+                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                }}
+                .container {{
+                    background: white;
+                    padding: 40px;
+                    border-radius: 20px;
+                    text-align: center;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+                    max-width: 500px;
+                }}
+                .success-icon {{
+                    font-size: 80px;
+                    color: #4CAF50;
+                }}
+                h1 {{
+                    color: #333;
+                    margin: 20px 0;
+                }}
+                p {{
+                    color: #666;
+                    font-size: 18px;
+                    line-height: 1.6;
+                }}
+                .reference {{
+                    background: #f0f0f0;
+                    padding: 10px;
+                    border-radius: 5px;
+                    font-family: monospace;
+                    margin: 20px 0;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="container">
+                <div class="success-icon">✅</div>
+                <h1>Payment Successful!</h1>
+                <p>Your consultation has been paid for and a doctor will be assigned shortly.</p>
+                <p>You will receive a WhatsApp message with your video call link.</p>
+                <div class="reference">
+                    <small>Reference: {reference}</small>
+                </div>
+                <p><strong>Thank you for using OgaDoctor! 🩺</strong></p>
+            </div>
+        </body>
+        </html>
+        """
+    else:
+        return "Payment verification pending...", 200
+
 @app.route('/video/create-room', methods=['POST'])
 def create_video_room():
     """
@@ -411,81 +556,7 @@ def paystack_webhook():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
-@app.route('/payment/create-link', methods=['POST'])
-def create_payment_link():
-    """
-    Generate Paystack payment link for consultation
-    """
-    try:
-        data = request.json
-        consultation_id = data.get('consultation_id')
-        consultation_type = data.get('consultation_type', 'doctor')
-        patient_email = data.get('patient_email', 'patient@ogadoctor.com')
-        
-        # Get consultation details
-        consultation = supabase.table('Consultations')\
-            .select('*')\
-            .eq('id', consultation_id)\
-            .single()\
-            .execute().data
-        
-        if not consultation:
-            return jsonify({'error': 'Consultation not found'}), 404
-        
-        # Determine amount (in kobo - Paystack uses kobo)
-        if consultation_type == 'pharmacist':
-            amount = 1000 * 100  # ₦1,000 in kobo
-        else:
-            amount = 1500 * 100  # ₦1,500 in kobo
-        
-        # Create Paystack payment link
-        paystack_url = 'https://api.paystack.co/transaction/initialize'
-        
-        headers = {
-            'Authorization': f'Bearer {os.getenv("PAYSTACK_SECRET_KEY")}',
-            'Content-Type': 'application/json'
-        }
-        
-        payload = {
-            'email': patient_email,
-            'amount': amount,
-            'metadata': {
-                'consultation_id': consultation_id,
-                'consultation_type': consultation_type,
-                'patient_name': consultation['patient_name'],
-                'patient_phone': consultation['patient_phone']
-            },
-            'callback_url': 'https://ogadoctor-analytics-dashboard.onrender.com/payment/callback'
-        }
-        
-        import requests
-        response = requests.post(paystack_url, json=payload, headers=headers)
-        result = response.json()
-        
-        if result['status']:
-            payment_url = result['data']['authorization_url']
-            reference = result['data']['reference']
-            
-            # Update consultation with payment reference
-            supabase.table('Consultations').update({
-                'payment_reference': reference,
-                'payment_url': payment_url
-            }).eq('id', consultation_id).execute()
-            
-            return jsonify({
-                'success': True,
-                'payment_url': payment_url,
-                'reference': reference,
-                'amount': amount / 100  # Convert back to naira
-            }), 200
-        else:
-            return jsonify({'error': result.get('message', 'Payment link creation failed')}), 400
-    
-    except Exception as e:
-        print(f"❌ Error creating payment link: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({'error': str(e)}), 500
+
 @app.route('/api/test', methods=['POST'])
 def test_consultation():
     """Test endpoint - create a test consultation"""
@@ -537,10 +608,13 @@ if __name__ == '__main__':
        - GET  /                       (health check)
        - POST /webhook/botpress       (receive consultations)
        - POST /webhook/paystack       (payment confirmation)
+       - POST /payment/create-link    (generate payment link)
+       - GET  /payment/callback       (payment success page)
        - POST /video/create-room      (create video call)
        - POST /api/test               (test consultation)
     
     🎥 Twilio Video: {'✅ Connected' if TWILIO_ACCOUNT_SID else '❌ Not configured'}
     💾 Supabase: {'✅ Connected' if SUPABASE_URL else '❌ Not configured'}
+    💰 Paystack: {'✅ Connected' if os.getenv("PAYSTACK_SECRET_KEY") else '❌ Not configured'}
     """)
     app.run(host='0.0.0.0', port=port, debug=True)
