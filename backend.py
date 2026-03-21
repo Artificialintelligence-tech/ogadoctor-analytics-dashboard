@@ -14,6 +14,7 @@ from twilio.jwt.access_token import AccessToken
 from twilio.jwt.access_token.grants import VideoGrant
 from datetime import datetime
 import os
+import requests
 
 app = Flask(__name__)
 
@@ -410,7 +411,81 @@ def paystack_webhook():
         import traceback
         traceback.print_exc()
         return jsonify({'success': False, 'error': str(e)}), 500
-
+@app.route('/payment/create-link', methods=['POST'])
+def create_payment_link():
+    """
+    Generate Paystack payment link for consultation
+    """
+    try:
+        data = request.json
+        consultation_id = data.get('consultation_id')
+        consultation_type = data.get('consultation_type', 'doctor')
+        patient_email = data.get('patient_email', 'patient@ogadoctor.com')
+        
+        # Get consultation details
+        consultation = supabase.table('Consultations')\
+            .select('*')\
+            .eq('id', consultation_id)\
+            .single()\
+            .execute().data
+        
+        if not consultation:
+            return jsonify({'error': 'Consultation not found'}), 404
+        
+        # Determine amount (in kobo - Paystack uses kobo)
+        if consultation_type == 'pharmacist':
+            amount = 1000 * 100  # ₦1,000 in kobo
+        else:
+            amount = 1500 * 100  # ₦1,500 in kobo
+        
+        # Create Paystack payment link
+        paystack_url = 'https://api.paystack.co/transaction/initialize'
+        
+        headers = {
+            'Authorization': f'Bearer {os.getenv("PAYSTACK_SECRET_KEY")}',
+            'Content-Type': 'application/json'
+        }
+        
+        payload = {
+            'email': patient_email,
+            'amount': amount,
+            'metadata': {
+                'consultation_id': consultation_id,
+                'consultation_type': consultation_type,
+                'patient_name': consultation['patient_name'],
+                'patient_phone': consultation['patient_phone']
+            },
+            'callback_url': 'https://ogadoctor-analytics-dashboard.onrender.com/payment/callback'
+        }
+        
+        import requests
+        response = requests.post(paystack_url, json=payload, headers=headers)
+        result = response.json()
+        
+        if result['status']:
+            payment_url = result['data']['authorization_url']
+            reference = result['data']['reference']
+            
+            # Update consultation with payment reference
+            supabase.table('Consultations').update({
+                'payment_reference': reference,
+                'payment_url': payment_url
+            }).eq('id', consultation_id).execute()
+            
+            return jsonify({
+                'success': True,
+                'payment_url': payment_url,
+                'reference': reference,
+                'amount': amount / 100  # Convert back to naira
+            }), 200
+        else:
+            return jsonify({'error': result.get('message', 'Payment link creation failed')}), 400
+    
+    except Exception as e:
+        print(f"❌ Error creating payment link: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({'error': str(e)}), 500
 @app.route('/api/test', methods=['POST'])
 def test_consultation():
     """Test endpoint - create a test consultation"""
