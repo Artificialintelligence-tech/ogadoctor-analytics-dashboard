@@ -7,3 +7,4 @@ gotrue
 httpx
 requests
 openai
+flask-cors
