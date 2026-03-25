@@ -94,8 +94,17 @@ def determine_priority(severity):
 def run_ai_diagnosis(symptoms, severity, duration):
     """Run AI diagnosis using OpenAI GPT-4"""
     try:
+        print(f"🤖 AI Diagnosis starting...")
+        print(f"   Symptoms: {symptoms}")
+        print(f"   Severity: {severity}")
+        print(f"   Duration: {duration}")
+        
         if not openai_client:
-            return "AI unavailable", "Please consult doctor"
+            print("❌ OpenAI client not initialized!")
+            print(f"   OPENAI_API_KEY exists: {bool(os.getenv('OPENAI_API_KEY'))}")
+            return "AI unavailable - OpenAI not configured", "Please consult doctor"
+        
+        print("✅ OpenAI client initialized")
         
         prompt = """You are a clinical decision support system for a Nigerian community pharmacy.
 Your role:
@@ -114,23 +123,23 @@ RED FLAGS: [If patient should see doctor instead of self-treating]
 
 Be practical and only suggest medications commonly available in Nigerian pharmacies."""
 
+        print("🔄 Calling OpenAI API...")
+        
         response = openai_client.chat.completions.create(
             model="gpt-4",
             messages=[
-                {
-                    "role": "system",
-                    "content": prompt
-                },
-                {
-                    "role": "user",
-                    "content": f"Patient Information:\nSymptoms: {symptoms}\nSeverity: {severity}\nDuration: {duration}\n\nPlease provide diagnosis and treatment recommendations."
-                }
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": f"Patient Information:\nSymptoms: {symptoms}\nSeverity: {severity}\nDuration: {duration}\n\nPlease provide diagnosis and treatment recommendations."}
             ],
             max_tokens=300,
             temperature=0.7
         )
         
+        print("✅ OpenAI API responded")
+        
         ai_response = response.choices[0].message.content
+        
+        print(f"📝 AI Response length: {len(ai_response)} characters")
         
         # Parse AI response
         diagnosis = ""
@@ -153,13 +162,17 @@ Be practical and only suggest medications commonly available in Nigerian pharmac
         if not medications:
             medications = ai_response
         
-        print(f"✅ AI Diagnosis completed")
+        print(f"✅ AI Diagnosis completed successfully")
+        print(f"   Diagnosis: {diagnosis[:50]}...")
+        print(f"   Medications: {medications[:50]}...")
+        
         return diagnosis, medications
         
     except Exception as e:
-        print(f"❌ AI Diagnosis error: {e}")
+        print(f"❌ AI Diagnosis error: {type(e).__name__}: {str(e)}")
+        import traceback
+        print(f"❌ Traceback: {traceback.format_exc()}")
         return "AI analysis unavailable", "Doctor will assess manually"
-
 def send_whatsapp_notification(phone_number, message):
     """Send WhatsApp notification (placeholder for now)"""
     print(f"📱 WhatsApp to {phone_number}: {message}")
