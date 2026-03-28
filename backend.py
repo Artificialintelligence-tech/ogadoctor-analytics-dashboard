@@ -177,15 +177,38 @@ def send_whatsapp_notification(phone_number, message):
     """Send WhatsApp notification via Twilio"""
     try:
         # Format phone number for WhatsApp (must include country code)
-        # If phone starts with 0, replace with +234 (Nigeria)
-        if phone_number.startswith('0'):
-            whatsapp_number = f'whatsapp:+234{phone_number[1:]}'
-        elif phone_number.startswith('+'):
-            whatsapp_number = f'whatsapp:{phone_number}'
-        elif phone_number.startswith('234'):
-            whatsapp_number = f'whatsapp:+{phone_number}'
+        
+        # Remove any spaces or special characters
+        clean_number = phone_number.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
+        
+        # Handle different phone number formats
+        if clean_number.startswith('+'):
+            # Already has +, use as-is
+            whatsapp_number = f'whatsapp:{clean_number}'
+        
+        elif clean_number.startswith('00'):
+            # 00234... format -> +234...
+            whatsapp_number = f'whatsapp:+{clean_number[2:]}'
+        
+        elif clean_number.startswith('0') and len(clean_number) == 11:
+            # UK number: 07918466426 -> +447918466426
+            whatsapp_number = f'whatsapp:+44{clean_number[1:]}'
+        
+        elif clean_number.startswith('0') and len(clean_number) > 11:
+            # Nigerian number: 08033... -> +2348033...
+            whatsapp_number = f'whatsapp:+234{clean_number[1:]}'
+        
+        elif clean_number.startswith('234'):
+            # 234803... -> +234803...
+            whatsapp_number = f'whatsapp:+{clean_number}'
+        
+        elif clean_number.startswith('44'):
+            # 44791... -> +44791...
+            whatsapp_number = f'whatsapp:+{clean_number}'
+        
         else:
-            whatsapp_number = f'whatsapp:+{phone_number}'
+            # Assume it already has country code, just missing +
+            whatsapp_number = f'whatsapp:+{clean_number}'
         
         print(f"📱 Sending WhatsApp to {whatsapp_number}")
         
