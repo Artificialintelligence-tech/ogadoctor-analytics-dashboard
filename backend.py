@@ -174,8 +174,34 @@ Be practical and only suggest medications commonly available in Nigerian pharmac
         print(f"❌ Traceback: {traceback.format_exc()}")
         return "AI analysis unavailable", "Doctor will assess manually"
 def send_whatsapp_notification(phone_number, message):
-    """Send WhatsApp notification (placeholder for now)"""
-    print(f"📱 WhatsApp to {phone_number}: {message}")
+    """Send WhatsApp notification via Twilio"""
+    try:
+        # Format phone number for WhatsApp (must include country code)
+        # If phone starts with 0, replace with +234 (Nigeria)
+        if phone_number.startswith('0'):
+            whatsapp_number = f'whatsapp:+234{phone_number[1:]}'
+        elif phone_number.startswith('+'):
+            whatsapp_number = f'whatsapp:{phone_number}'
+        elif phone_number.startswith('234'):
+            whatsapp_number = f'whatsapp:+{phone_number}'
+        else:
+            whatsapp_number = f'whatsapp:+{phone_number}'
+        
+        print(f"📱 Sending WhatsApp to {whatsapp_number}")
+        
+        # Send via Twilio
+        twilio_message = twilio_client.messages.create(
+            from_='whatsapp:+14155238886',  # Twilio WhatsApp sandbox number
+            to=whatsapp_number,
+            body=message
+        )
+        
+        print(f"✅ WhatsApp sent! SID: {twilio_message.sid}")
+        return True
+        
+    except Exception as e:
+        print(f"❌ WhatsApp send failed: {e}")
+        return False
     # TODO: Implement WhatsApp Business API
 
 # ============================================================================
