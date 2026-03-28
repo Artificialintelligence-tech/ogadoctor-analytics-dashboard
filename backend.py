@@ -181,34 +181,48 @@ def send_whatsapp_notification(phone_number, message):
         # Remove any spaces or special characters
         clean_number = phone_number.replace(' ', '').replace('-', '').replace('(', '').replace(')', '')
         
+        print(f"🔍 Processing phone: '{phone_number}' → cleaned: '{clean_number}' (length: {len(clean_number)})")
+        
         # Handle different phone number formats
         if clean_number.startswith('+'):
             # Already has +, use as-is
             whatsapp_number = f'whatsapp:{clean_number}'
+            print(f"   → Matched: Already has +")
         
         elif clean_number.startswith('00'):
             # 00234... format -> +234...
             whatsapp_number = f'whatsapp:+{clean_number[2:]}'
+            print(f"   → Matched: 00 prefix")
         
         elif clean_number.startswith('0') and len(clean_number) == 11:
             # UK number: 07918466426 -> +447918466426
             whatsapp_number = f'whatsapp:+44{clean_number[1:]}'
+            print(f"   → Matched: UK number (0 + 11 digits)")
         
         elif clean_number.startswith('0') and len(clean_number) > 11:
             # Nigerian number: 08033... -> +2348033...
             whatsapp_number = f'whatsapp:+234{clean_number[1:]}'
+            print(f"   → Matched: Nigerian number (0 + >11 digits)")
         
         elif clean_number.startswith('234'):
             # 234803... -> +234803...
             whatsapp_number = f'whatsapp:+{clean_number}'
+            print(f"   → Matched: Starts with 234")
         
         elif clean_number.startswith('44'):
             # 44791... -> +44791...
             whatsapp_number = f'whatsapp:+{clean_number}'
+            print(f"   → Matched: Starts with 44")
+        
+        elif len(clean_number) == 10 and clean_number[0] in '789':
+            # UK number without leading 0: 7918466426 -> +447918466426
+            whatsapp_number = f'whatsapp:+44{clean_number}'
+            print(f"   → Matched: UK number (10 digits, starts with 7/8/9)")
         
         else:
             # Assume it already has country code, just missing +
             whatsapp_number = f'whatsapp:+{clean_number}'
+            print(f"   → Matched: Default (assume has country code)")
         
         print(f"📱 Sending WhatsApp to {whatsapp_number}")
         
