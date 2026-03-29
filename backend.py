@@ -184,40 +184,53 @@ def send_whatsapp_notification(phone_number, message):
         print(f"🔍 Processing phone: '{phone_number}' → cleaned: '{clean_number}' (length: {len(clean_number)})")
         
         # Handle different phone number formats
-        if clean_number.startswith('+'):
-            # Already has +, use as-is
+        if clean_number.startswith('+44'):
+            # Explicitly UK: +447062862607
             whatsapp_number = f'whatsapp:{clean_number}'
-            print(f"   → Matched: Already has +")
+            print(f"   → Matched: UK (explicit +44)")
+        
+        elif clean_number.startswith('+234'):
+            # Explicitly Nigerian: +2347062862607
+            whatsapp_number = f'whatsapp:{clean_number}'
+            print(f"   → Matched: Nigerian (explicit +234)")
+        
+        elif clean_number.startswith('+'):
+            # Other country with +
+            whatsapp_number = f'whatsapp:{clean_number}'
+            print(f"   → Matched: International (+)")
         
         elif clean_number.startswith('00'):
-            # 00234... format -> +234...
+            # 00234... format → +234...
             whatsapp_number = f'whatsapp:+{clean_number[2:]}'
             print(f"   → Matched: 00 prefix")
         
-        elif clean_number.startswith('0') and len(clean_number) == 11:
-            # UK number: 07918466426 -> +447918466426
-            whatsapp_number = f'whatsapp:+44{clean_number[1:]}'
-            print(f"   → Matched: UK number (0 + 11 digits)")
-        
-        elif clean_number.startswith('0') and len(clean_number) > 11:
-            # Nigerian number: 08033... -> +2348033...
+        elif clean_number.startswith('0') and len(clean_number) >= 10:
+            # Nigerian number with 0: 07062862607 → +2347062862607
+            # (Assuming Nigerian by default since that's your primary market)
             whatsapp_number = f'whatsapp:+234{clean_number[1:]}'
-            print(f"   → Matched: Nigerian number (0 + >11 digits)")
+            print(f"   → Matched: Nigerian number (0 prefix)")
         
         elif clean_number.startswith('234'):
-            # 234803... -> +234803...
+            # 2347062862607 → +2347062862607
             whatsapp_number = f'whatsapp:+{clean_number}'
-            print(f"   → Matched: Starts with 234")
+            print(f"   → Matched: Nigerian (starts with 234)")
         
-        elif clean_number.startswith('44'):
-            # 44791... -> +44791...
+        elif clean_number.startswith('44') and len(clean_number) >= 12:
+            # 447062862607 → +447062862607
             whatsapp_number = f'whatsapp:+{clean_number}'
-            print(f"   → Matched: Starts with 44")
+            print(f"   → Matched: UK (starts with 44)")
         
-        elif len(clean_number) == 10 and clean_number[0] in '789':
-            # UK number without leading 0: 7918466426 -> +447918466426
-            whatsapp_number = f'whatsapp:+44{clean_number}'
-            print(f"   → Matched: UK number (10 digits, starts with 7/8/9)")
+        elif len(clean_number) == 10 and clean_number[0] in '7890':
+            # 10 digit number starting with 7/8/9/0
+            # ASSUME NIGERIAN (your primary market)
+            whatsapp_number = f'whatsapp:+234{clean_number}'
+            print(f"   → Matched: Nigerian (10 digits, assumed)")
+        
+        elif len(clean_number) == 11 and clean_number[0] in '7890':
+            # 11 digit number starting with 7/8/9/0
+            # ASSUME NIGERIAN without the 0
+            whatsapp_number = f'whatsapp:+234{clean_number[1:] if clean_number[0] == "0" else clean_number}'
+            print(f"   → Matched: Nigerian (11 digits)")
         
         else:
             # Assume it already has country code, just missing +
